@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Expense, Budgets, Category } from "@/lib/types";
 import { loadExpenses, saveExpenses, loadBudgets, saveBudgets } from "@/lib/storage";
 import { CATEGORIES } from "@/lib/categories";
-import { Send, Wallet, AlertTriangle, TrendingUp } from "lucide-react";
+import { Send, Wallet, AlertTriangle, TrendingUp, Settings } from "lucide-react";
 
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -12,6 +12,7 @@ export default function Home() {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showBudgetEditor, setShowBudgetEditor] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,6 +35,12 @@ export default function Home() {
 
   const categorySpent = (cat: Category) =>
     thisMonthExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0);
+
+  function updateBudget(key: keyof Budgets, value: number) {
+    const updated = { ...budgets, [key]: value };
+    setBudgets(updated);
+    saveBudgets(updated);
+  }
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
@@ -112,9 +119,18 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row">
       {/* Sidebar - Stats & Budgets */}
       <div className="w-full md:w-80 border-r border-zinc-800 p-5 space-y-6 overflow-y-auto">
-        <div className="flex items-center gap-2 text-xl font-semibold">
-          <Wallet className="w-6 h-6 text-emerald-400" />
-          Expense Agent
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xl font-semibold">
+            <Wallet className="w-6 h-6 text-emerald-400" />
+            Expense Agent
+          </div>
+          <button
+            onClick={() => setShowBudgetEditor(!showBudgetEditor)}
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white"
+            title="Edit budgets"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="bg-zinc-900 rounded-xl p-4 space-y-2">
@@ -129,6 +145,39 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Budget Editor */}
+        {showBudgetEditor && (
+          <div className="bg-zinc-900 rounded-xl p-4 space-y-3 border border-emerald-800/50">
+            <div className="text-sm font-medium text-emerald-400">Edit Your Budgets (PKR)</div>
+            
+            <div>
+              <label className="text-xs text-zinc-400">Overall Monthly Budget / Salary</label>
+              <input
+                type="number"
+                value={budgets.overall}
+                onChange={(e) => updateBudget("overall", Number(e.target.value) || 0)}
+                className="w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            {CATEGORIES.map((cat) => (
+              <div key={cat}>
+                <label className="text-xs text-zinc-400">{cat}</label>
+                <input
+                  type="number"
+                  value={budgets[cat]}
+                  onChange={(e) => updateBudget(cat, Number(e.target.value) || 0)}
+                  className="w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            ))}
+
+            <p className="text-xs text-zinc-500 pt-1">
+              Changes save automatically. Anyone can set their own salary & limits.
+            </p>
+          </div>
+        )}
 
         <div>
           <div className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -160,10 +209,6 @@ export default function Home() {
             })}
           </div>
         </div>
-
-        <div className="text-xs text-zinc-500 pt-4 border-t border-zinc-800">
-          Data stays in your browser. Free forever.
-        </div>
       </div>
 
       {/* Chat Area */}
@@ -175,6 +220,7 @@ export default function Home() {
               <p className="text-sm">Try: “Spent 850 on lunch today”</p>
               <p className="text-sm">or “Set food budget to 20000”</p>
               <p className="text-sm">or “How much left in transport?”</p>
+              <p className="text-sm mt-4 text-zinc-600">Click the ⚙️ icon to edit your budgets</p>
             </div>
           )}
 
