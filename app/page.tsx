@@ -6,6 +6,17 @@ import { loadExpenses, saveExpenses, loadBudgets, saveBudgets } from "@/lib/stor
 import { CATEGORIES } from "@/lib/categories";
 import { Send, Wallet, AlertTriangle, TrendingUp, Settings } from "lucide-react";
 
+const DEFAULT_BUDGETS: Budgets = {
+  overall: 50000,
+  Food: 15000,
+  Transport: 8000,
+  Shopping: 5000,
+  Bills: 10000,
+  Entertainment: 4000,
+  Health: 3000,
+  Other: 5000,
+};
+
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Budgets>(loadBudgets());
@@ -40,6 +51,17 @@ export default function Home() {
     const updated = { ...budgets, [key]: value };
     setBudgets(updated);
     saveBudgets(updated);
+  }
+
+  function resetData() {
+    if (!confirm("Are you sure? This will delete all expenses and reset budgets to default.")) return;
+
+    setExpenses([]);
+    saveExpenses([]);
+    setBudgets(DEFAULT_BUDGETS);
+    saveBudgets(DEFAULT_BUDGETS);
+    setMessages([]);
+    setShowBudgetEditor(false);
   }
 
   async function sendMessage() {
@@ -202,8 +224,15 @@ export default function Home() {
             ))}
 
             <p className="text-xs text-zinc-500 pt-1">
-              Changes save automatically. Anyone can set their own salary & limits.
+              Changes save automatically.
             </p>
+
+            <button
+              onClick={resetData}
+              className="w-full mt-3 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-800/50 rounded-lg px-3 py-2 text-sm font-medium transition"
+            >
+              Reset All Data
+            </button>
           </div>
         )}
 
