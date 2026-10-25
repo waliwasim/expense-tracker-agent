@@ -43,7 +43,7 @@ ${JSON.stringify(budgets, null, 2)}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "openai/gpt-oss-20b",
         messages: [
           { role: "system", content: SYSTEM_PROMPT + "\n\n" + context },
           ...messages,
@@ -60,7 +60,7 @@ ${JSON.stringify(budgets, null, 2)}
       console.error("Groq error:", data);
       return NextResponse.json({
         action: "reply",
-        message: "AI service error. Please check your API key or try again.",
+        message: "AI service error. Please check your API key or try again. Error: " + (data.error?.message || JSON.stringify(data)),
       });
     }
 
