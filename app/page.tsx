@@ -63,6 +63,7 @@ export default function Home() {
 
       const data = await res.json();
 
+      // Handle single expense (old format)
       if (data.action === "add_expense") {
         const newExpense: Expense = {
           id: crypto.randomUUID(),
@@ -80,6 +81,33 @@ export default function Home() {
           {
             role: "assistant",
             content: `Added Rs ${newExpense.amount.toLocaleString()} under ${newExpense.category}${newExpense.note ? ` (${newExpense.note})` : ""}.`,
+          },
+        ]);
+      }
+      // Handle multiple expenses (new format)
+      else if (data.action === "add_expenses" && Array.isArray(data.expenses)) {
+        const today = new Date().toISOString().split("T")[0];
+        const newOnes: Expense[] = data.expenses.map((e: any) => ({
+          id: crypto.randomUUID(),
+          amount: Number(e.amount),
+          category: e.category,
+          note: e.note || "",
+          date: e.date || today,
+        }));
+
+        const updated = [...expenses, ...newOnes];
+        setExpenses(updated);
+        saveExpenses(updated);
+
+        const summary = newOnes
+          .map((e) => `Rs ${e.amount.toLocaleString()} (${e.category}${e.note ? " - " + e.note : ""})`)
+          .join(", ");
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Added ${newOnes.length} expenses: ${summary}`,
           },
         ]);
       } else if (data.action === "set_budget") {
@@ -108,7 +136,7 @@ export default function Home() {
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Failed to process. Check your Groq API key." },
+        { role: "assistant", content: "Failed to process. Please try again." },
       ]);
     } finally {
       setLoading(false);
