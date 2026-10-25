@@ -41,7 +41,7 @@ ${JSON.stringify(budgets, null, 2)}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b",
+        model: "qwen/qwen3.8-27b",
         messages: [
           { role: "system", content: SYSTEM_PROMPT + "\n\n" + context },
           ...messages,
