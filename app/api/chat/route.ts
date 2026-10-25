@@ -1,35 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SYSTEM_PROMPT = `You are an Expense Tracker Agent for Pakistani Rupees (PKR / Rs).
+const SYSTEM_PROMPT = `You are a helpful Expense Tracker Agent for Pakistani Rupees (PKR).
 
-Current date context: use today's date when user says "today" or "yesterday".
+You MUST reply with ONLY a valid JSON object. No other text, no markdown, no explanation.
 
-You can perform these actions by returning STRICT JSON only (no markdown, no extra text):
+Possible actions:
 
-1. Add expense:
-{"action":"add_expense","amount":1200,"category":"Food","note":"lunch","date":"2026-10-25"}
+1. When user mentions spending money:
+{"action":"add_expense","amount":850,"category":"Food","note":"lunch","date":"2026-10-25"}
 
-2. Set budget (overall or category):
-{"action":"set_budget","target":"Food","amount":18000}
-{"action":"set_budget","target":"overall","amount":60000}
+2. When user wants to set a budget:
+{"action":"set_budget","target":"Food","amount":15000}
+or
+{"action":"set_budget","target":"overall","amount":50000}
 
-3. Answer questions (use this when user asks for summary, remaining budget, insights, etc.):
-{"action":"reply","message":"Your friendly helpful reply here in plain English. Use Rs and PKR."}
+3. When user asks a question (summary, remaining budget, advice, etc.):
+{"action":"reply","message":"Your clear answer here using Rs"}
 
 Rules:
-- Categories must be exactly one of: Food, Transport, Shopping, Bills, Entertainment, Health, Other
-- Always use numbers only for amounts (no commas)
-- If user is vague, make a reasonable assumption and mention it
-- Be concise and helpful
-- When showing remaining budget, calculate based on the expenses and budgets provided in the user message
-`;
+- Categories allowed: Food, Transport, Shopping, Bills, Entertainment, Health, Other
+- Amount must be a number (no commas)
+- Use today's date if user says "today"
+- Use yesterday's date if user says "yesterday"
+- Always return pure JSON only`
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, expenses, budgets } = await req.json();
 
     const context = `
-Current expenses (this month):
+Current expenses this month:
 ${JSON.stringify(expenses, null, 2)}
 
 Current budgets (PKR):
@@ -43,24 +43,38 @@ ${JSON.stringify(budgets, null, 2)}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         messages: [
           { role: "system", content: SYSTEM_PROMPT + "\n\n" + context },
           ...messages,
         ],
-        temperature: 0.3,
-        max_tokens: 800,
+        temperature: 0.1,
+        max_tokens: 500,
+        response_format: { type: "json_object" },
       }),
     });
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
 
-    // Try to parse pure JSON
+    if (!response.ok) {
+      console.error("Groq error:", data);
+      return NextResponse.json({
+        action: "reply",
+        message: "AI service error. Please check your API key or try again.",
+      });
+    }
+
+    const content = data.choices?.[0]?.message?.content || "{}";
+
     let parsed;
     try {
       parsed = JSON.parse(content.trim());
     } catch {
+      parsed = { action: "reply", message: content || "Sorry, I could not understand." };
+    }
+
+    // Safety check
+    if (!parsed.action) {
       parsed = { action: "reply", message: content };
     }
 
@@ -68,7 +82,7 @@ ${JSON.stringify(budgets, null, 2)}
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { action: "reply", message: "Sorry, something went wrong. Please try again." },
+      { action: "reply", message: "Something went wrong. Please try again." },
       { status: 500 }
     );
   }
